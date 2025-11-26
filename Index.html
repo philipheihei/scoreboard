@@ -1,0 +1,383 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { RotateCcw, Users, Trophy, ArrowRightLeft, Undo2, Settings } from 'lucide-react';
+const TakrawApp = () = {
+  --- 初始設定與狀態 ---
+  預設球員號碼
+ const initialTeamA = {
+   name 自己,
+   players [1, 2, 3],  [0]後中(發球), [1]左前, [2]右前
+   bench [4, 5, 6],
+   color bg-blue-600,
+   score 0,
+   sets 0
+ };
+ const initialTeamB = {
+   name 對手,
+   players [11, 12, 13],
+   bench [14, 15, 16],
+   color bg-red-600,
+   score 0,
+   sets 0
+ };
+  遊戲狀態
+ const [teamA, setTeamA] = useState(initialTeamA);
+ const [teamB, setTeamB] = useState(initialTeamB);
+ const [servingTeam, setServingTeam] = useState('A');  'A' or 'B'
+ const [currentSet, setCurrentSet] = useState(1);
+ const [gameHistory, setGameHistory] = useState([]);  用於 Undo
+ const [matchOver, setMatchOver] = useState(false);
+ const [isSwapped, setIsSwapped] = useState(false);  第三局換場狀態
+ const [showSubModal, setShowSubModal] = useState(false);
+ const [subTeam, setSubTeam] = useState('A');  當前正在換人的隊伍
+  --- 核心邏輯 ---
+  儲存歷史紀錄 (Snapshot)
+ const saveState = () = {
+   const currentState = {
+     teamA JSON.parse(JSON.stringify(teamA)),
+     teamB JSON.parse(JSON.stringify(teamB)),
+     servingTeam,
+     currentSet,
+     matchOver,
+     isSwapped
+   };
+    限制歷史紀錄長度，避免記憶體問題
+   setGameHistory(prev = [...prev.slice(-20), currentState]);
+ };
+  復原 (Undo)
+ const undo = () = {
+   if (gameHistory.length === 0) return;
+   const lastState = gameHistory[gameHistory.length - 1];
+   setTeamA(lastState.teamA);
+   setTeamB(lastState.teamB);
+   setServingTeam(lastState.servingTeam);
+   setCurrentSet(lastState.currentSet);
+   setMatchOver(lastState.matchOver);
+   setIsSwapped(lastState.isSwapped);
+   setGameHistory(prev = prev.slice(0, -1));
+ };
+  順時針輪轉邏輯
+ const rotatePlayers = (players) = {
+   const newPositions = [...players];
+   const back = players[0];
+   const left = players[1];
+   const right = players[2];
+   return [right, back, left];
+ };
+  得分處理
+ const handleScore = (winner) = {
+   if (matchOver) return;
+   saveState();
+   const isTeamA = winner === 'A';
+   const scoringTeam = isTeamA  teamA  teamB;
+   const losingTeam = isTeamA  teamB  teamA;
+   const setScoringTeam = isTeamA  setTeamA  setTeamB;
+    1. 增加分數
+   const newScore = scoringTeam.score + 1;
+    2. 判斷是否需要輪轉
+   let shouldRotate = false;
+   let nextServingTeam = winner;  贏球者發球 (基本規則)
+    判斷 Deuce 狀態 (20-20平手後)
+   const isDeuce = (teamA.score = 20 && teamB.score = 20);
+   if (isDeuce) {
+     if (servingTeam === 'A') nextServingTeam = 'B';
+     else nextServingTeam = 'A';
+     if (nextServingTeam !== servingTeam) {
+       shouldRotate = true;
+     }
+   } else {
+      正常階段：贏球者發球
+     if (servingTeam !== winner) {
+       shouldRotate = true;  奪回發球權，轉位
+     }
+   }
+    3. 更新球員位置 (如果需要)
+   let newPlayers = [...scoringTeam.players];
+   if (shouldRotate && nextServingTeam === winner) {
+      newPlayers = rotatePlayers(scoringTeam.players);
+   }
+   let updatedTeamA_Players = [...teamA.players];
+   let updatedTeamB_Players = [...teamB.players];
+   if (nextServingTeam !== servingTeam) {
+     if (nextServingTeam === 'A') {
+       updatedTeamA_Players = rotatePlayers(teamA.players);
+     } else {
+       updatedTeamB_Players = rotatePlayers(teamB.players);
+     }
+   }
+    4. 檢查是否拿下此局
+   const enemyScore = losingTeam.score;
+   let setWon = false;
+    規則：至少21分，且贏2分
+   if (newScore = 21 && (newScore - enemyScore) = 2) {
+     setWon = true;
+   }
+    更新狀態
+   if (setWon) {
+      handleSetWin(winner, updatedTeamA_Players, updatedTeamB_Players);
+   } else {
+      setTeamA(prev = ({ ...prev, players updatedTeamA_Players, score isTeamA  newScore  prev.score }));
+      setTeamB(prev = ({ ...prev, players updatedTeamB_Players, score !isTeamA  newScore  prev.score }));
+      setServingTeam(nextServingTeam);
+       檢查第三局換場 (修改為 10 分)
+      if (currentSet === 3 && (newScore === 10  enemyScore === 10) && !isSwapped) {
+          const maxScore = Math.max(newScore, enemyScore);
+          if (maxScore === 10) {
+            alert(第三局 10分！請交換場地。);
+            setIsSwapped(true);
+          }
+      }
+   }
+ };
+ const handleSetWin = (winner, lastPosA, lastPosB) = {
+   const isTeamA = winner === 'A';
+    增加局數
+   const newSetsA = teamA.sets + (isTeamA  1  0);
+   const newSetsB = teamB.sets + (!isTeamA  1  0);
+    檢查比賽是否結束
+   if (newSetsA === 2  newSetsB === 2) {
+      setTeamA(prev = ({ ...prev, score isTeamA  21  prev.score, sets newSetsA }));
+      setTeamB(prev = ({ ...prev, score !isTeamA  21  prev.score, sets newSetsB }));
+      setMatchOver(true);
+      return;
+   }
+    下一局重置
+   setCurrentSet(prev = prev + 1);
+   setTeamA(prev = ({ ...prev, score 0, sets newSetsA, players lastPosA }));
+   setTeamB(prev = ({ ...prev, score 0, sets newSetsB, players lastPosB }));
+   setServingTeam(winner);
+   alert(`第 ${currentSet} 局結束，由 ${winner === 'A'  teamA.name  teamB.name} 獲勝！`);
+ };
+  換人邏輯
+ const handleSubstitution = (playerOut, playerIn) = {
+   saveState();
+   const targetSetTeam = subTeam === 'A'  setTeamA  setTeamB;
+   targetSetTeam(prev = {
+     const newPlayers = prev.players.map(p = p === playerOut  playerIn  p);
+     const newBench = prev.bench.map(p = p === playerIn  playerOut  p);
+     return { ...prev, players newPlayers, bench newBench };
+   });
+   setShowSubModal(false);
+ };
+  --- UI 元件 ---
+ const PlayerNode = ({ number, position, teamColor, isServing }) = {
+   const posLabel = [後中, 左前, 右前];
+   return (
+div className={`relative flex flex-col items-center justify-center w-20 h-20 mdw-24 mdh-24 rounded-full border-4 shadow-lg transition-all duration-500
+       ${teamColor} ${isServing  'border-yellow-400 ring-4 ring-yellow-200 scale-110'  'border-white'} text-white font-bold text-2xl mdtext-3xl`}
+
+       {number}
+span className=absolute -bottom-6 text-xs mdtext-sm bg-gray-800 text-white px-2 py-0.5 rounded opacity-80 whitespace-nowrap
+         {posLabel[position]}
+span
+       {isServing && (
+span className=absolute -top-3 -right-2 bg-yellow-500 text-black text-xs font-bold px-2 py-1 rounded-full animate-bounce
+           發球
+span
+       )}
+div
+   );
+ };
+  半場繪製
+ const HalfCourt = ({ team, isTop, isServingTeam }) = {
+   const p = team.players;
+   return (
+div className={`relative flex-1 w-full bg-emerald-600 border-2 border-white50 p-4 flex flex-col justify-between overflow-hidden ${isTop  'border-b-4 border-b-white80'  'border-t-4 border-t-white80'}`}
+       { 背景裝飾線 }
+div className=absolute inset-0 opacity-10 pointer-events-none
+div className=w-full h-full border-x-[40px] border-emerald-80030div
+div className=absolute top-12 left-12 -translate-x-12 -translate-y-12 w-32 h-32 rounded-full border-4 border-whitediv
+div
+       { 上半場 (遠端) }
+       {isTop  (
+
+            { Back Player (最遠) }
+div className=flex justify-center pt-4
+PlayerNode number={p[0]} position={0} teamColor={team.color} isServing={isServingTeam} 
+div
+            { Front Players (近網) }
+div className=flex justify-around pb-8 items-end flex-1
+PlayerNode number={p[2]} position={2} teamColor={team.color} isServing={false}  { 視覺右前 }
+PlayerNode number={p[1]} position={1} teamColor={team.color} isServing={false}  { 視覺左前 }
+div
+
+       )  (
+          下半場 (近端) 
+
+            { Front Players (近網) }
+div className=flex justify-around pt-8 items-start flex-1
+PlayerNode number={p[1]} position={1} teamColor={team.color} isServing={false} 
+PlayerNode number={p[2]} position={2} teamColor={team.color} isServing={false} 
+div
+            { Back Player (最遠) }
+div className=flex justify-center pb-4
+PlayerNode number={p[0]} position={0} teamColor={team.color} isServing={isServingTeam} 
+div
+
+       )}
+       { 隊伍名稱 }
+div className={`absolute ${isTop  'top-2 left-2'  'bottom-2 right-2'} bg-black40 text-white px-3 py-1 rounded backdrop-blur-sm`}
+         {team.name} {isServingTeam && 🎾}
+div
+div
+   );
+ };
+  換人彈窗
+ const SubstitutionModal = () = {
+   if (!showSubModal) return null;
+   const targetTeam = subTeam === 'A'  teamA  teamB;
+   return (
+div className=fixed inset-0 bg-black70 z-50 flex items-center justify-center p-4
+div className=bg-white rounded-xl w-full max-w-md overflow-hidden shadow-2xl
+div className=bg-gray-800 text-white p-4 flex justify-between items-center
+h3 className=text-xl font-bold flex items-center gap-2
+ArrowRightLeft size={20} {targetTeam.name} 換人
+h3
+button onClick={() = setShowSubModal(false)} className=text-gray-400 hovertext-white✕button
+div
+div className=p-4
+p className=text-sm text-gray-500 mb-2點擊場上球員以換下：p
+div className=grid grid-cols-3 gap-2 mb-6
+             {targetTeam.players.map((pNum, idx) = (
+button
+                 key={pNum}
+                 className={`p-3 rounded-lg border-2 text-center hoverbg-red-50 border-red-200`}
+                 onClick={() = {
+                     簡單起見，這裡做兩階段：先選場上，再選場下。
+                     為了 UI 簡潔，我們直接列出所有可能的替換組合
+                 }}
+
+div className=text-xl font-bold text-gray-800{pNum}div
+button
+             ))}
+div
+p className=text-sm text-gray-500 mb-2執行換人 (將板凳球員換入場上某位置)：p
+div className=space-y-2 max-h-60 overflow-y-auto
+             {targetTeam.bench.map(benchPlayer = (
+div key={benchPlayer} className=flex gap-2 items-center bg-gray-50 p-2 rounded
+div className=w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center font-bold text-gray-700
+                   {benchPlayer}
+div
+div className=flex-1 grid grid-cols-3 gap-1
+                   {targetTeam.players.map((activePlayer, idx) = (
+button
+                       key={idx}
+                       onClick={() = handleSubstitution(activePlayer, benchPlayer)}
+                       className=bg-blue-100 hoverbg-blue-600 hovertext-white text-blue-800 text-xs py-1 px-2 rounded transition-colors
+
+                       換下 {activePlayer}
+button
+                   ))}
+div
+div
+             ))}
+div
+div
+div
+div
+   );
+ };
+  決定上下半場顯示誰
+  正常 Top=B, Bottom=A
+  Swapped Top=A, Bottom=B
+ const topTeam = isSwapped  teamA  teamB;
+ const bottomTeam = isSwapped  teamB  teamA;
+ const isTopServing = servingTeam === (isSwapped  'A'  'B');
+ const isBottomServing = servingTeam === (isSwapped  'B'  'A');
+ return (
+div className=h-screen w-full bg-gray-900 flex flex-col mdflex-row overflow-hidden font-sans
+     { 左側上方：比分板與控制 }
+div className=w-full mdw-13 bg-gray-800 text-white flex flex-col border-r border-gray-700 shadow-xl z-10
+       { 頂部資訊 }
+div className=p-4 border-b border-gray-700 flex justify-between items-center bg-gray-900
+div className=text-sm text-gray-400Set {currentSet}div
+h1 className=text-xl font-bold text-yellow-500 flex items-center gap-2
+Trophy size={18} 足毽計分板
+h1
+button onClick={undo} className=p-2 bg-gray-700 rounded hoverbg-gray-600 disabledopacity-30 disabled={gameHistory.length === 0}
+Undo2 size={18} 
+button
+div
+       { 比分顯示區域 - 修改為左右並排 (flex-row) }
+div className=flex-1 flex flex-row items-stretch justify-center p-2 gap-2
+         { A 隊 (自己) 分數卡 }
+div
+           onClick={() = handleScore('A')}
+           className={`flex-1 rounded-xl p-2 flex flex-col items-center justify-center cursor-pointer transition-all activescale-95
+             ${teamA.color} bg-opacity-90 hoverbg-opacity-100 border-4 ${servingTeam === 'A'  'border-yellow-400'  'border-transparent'}`}
+
+div className=text-center mb-2
+div className=text-xl mdtext-2xl font-bold opacity-90{teamA.name}div
+div className=text-xs bg-black20 inline-block px-2 py-0.5 rounded mt-1局數 {teamA.sets}div
+div
+div className=text-6xl mdtext-8xl font-bold font-mono{teamA.score}div
+div
+         { B 隊 (對手) 分數卡 }
+div
+           onClick={() = handleScore('B')}
+           className={`flex-1 rounded-xl p-2 flex flex-col items-center justify-center cursor-pointer transition-all activescale-95
+             ${teamB.color} bg-opacity-90 hoverbg-opacity-100 border-4 ${servingTeam === 'B'  'border-yellow-400'  'border-transparent'}`}
+
+div className=text-center mb-2
+div className=text-xl mdtext-2xl font-bold opacity-90{teamB.name}div
+div className=text-xs bg-black20 inline-block px-2 py-0.5 rounded mt-1局數 {teamB.sets}div
+div
+div className=text-6xl mdtext-8xl font-bold font-mono{teamB.score}div
+div
+div
+       { 底部控制列 }
+div className=p-4 bg-gray-900 border-t border-gray-700 grid grid-cols-2 gap-3
+button
+            onClick={() = { setSubTeam('A'); setShowSubModal(true); }}
+            className=flex items-center justify-center gap-2 bg-blue-900 text-blue-200 py-3 rounded-lg hoverbg-blue-800
+
+Users size={18} 自己換人
+button
+button
+            onClick={() = { setSubTeam('B'); setShowSubModal(true); }}
+            className=flex items-center justify-center gap-2 bg-red-900 text-red-200 py-3 rounded-lg hoverbg-red-800
+
+Users size={18} 對手換人
+button
+button
+             onClick={() = {
+               if(window.confirm(確定要交換場地嗎？(通常系統會自動提示))) setIsSwapped(!isSwapped);
+             }}
+             className=col-span-2 text-sm text-gray-500 hovertext-white py-2 flex items-center justify-center gap-1
+
+RotateCcw size={14}  手動交換場地
+button
+div
+div
+     { 右側下方：球場模擬 }
+div className=flex-1 relative flex flex-col h-[60vh] mdh-full bg-emerald-900
+       {matchOver && (
+div className=absolute inset-0 z-20 bg-black80 flex flex-col items-center justify-center text-white p-8 text-center backdrop-blur-sm
+Trophy size={64} className=text-yellow-400 mb-4 animate-bounce
+h2 className=text-4xl font-bold mb-2比賽結束!h2
+p className=text-2xl mb-8
+              獲勝者 span className=text-yellow-400{teamA.sets  teamB.sets  teamA.name  teamB.name}span
+p
+button
+             onClick={() = window.location.reload()}
+             className=bg-white text-black px-6 py-3 rounded-full font-bold hoverbg-gray-200 transition-colors
+
+             開始新比賽
+button
+div
+       )}
+       { 網子 (絕對定位在中間) }
+div className=absolute top-12 left-0 w-full h-1 bg-white50 z-10 flex items-center justify-center
+div className=bg-white80 px-4 py-1 rounded-full text-black text-xs font-bold shadow-smNET (網)div
+div
+       { 球場區域 }
+div className=flex-1 flex flex-col w-full h-full max-w-2xl mx-auto shadow-2xl
+HalfCourt team={topTeam} isTop={true} isServingTeam={isTopServing} 
+HalfCourt team={bottomTeam} isTop={false} isServingTeam={isBottomServing} 
+div
+div
+     { Modals }
+SubstitutionModal 
+div
+ );
+};
+export default TakrawApp;
