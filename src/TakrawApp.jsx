@@ -173,7 +173,8 @@ const TakrawApp = () => {
     let updatedTeamA_Players = [...teamA.players];
     let updatedTeamB_Players = [...teamB.players];
 
-    if (nextServingTeam !== servingTeam) {
+   
+    if (gameMode === 'team' && nextServingTeam !== servingTeam) {
       if (nextServingTeam === 'A') {
         updatedTeamA_Players = rotatePlayers(teamA.players);
       } else {
@@ -675,6 +676,7 @@ const TakrawApp = () => {
             isTop={true}
             isServingTeam={isTopServing}
             isSwapped={isSwapped}
+            gameMode={gameMode}
           />
 
           <div className="bg-yellow-600 text-black text-center py-2 font-bold rounded-lg">
@@ -685,7 +687,8 @@ const TakrawApp = () => {
             team={bottomTeam}
             isTop={false}
             isServingTeam={isBottomServing}
-            isSwapped={isSwapped}
+            isSwapped={isSwapped
+            gameMode={gameMode}
           />
         </div>
       </div>
