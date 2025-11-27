@@ -14,6 +14,8 @@ const TakrawApp = () => {
   const [teamB, setTeamB] = useState(null);
   const [servingTeam, setServingTeam] = useState('A');
   const [firstServerOfMatch, setFirstServerOfMatch] = useState('A');
+  const [servingPlayerIndexA, setServingPlayerIndexA] = useState(0); // A隊當前發球員 (0 或 1)
+  const [servingPlayerIndexB, setServingPlayerIndexB] = useState(0); // B隊當前發球員 (0 或 1)
   const [currentSet, setCurrentSet] = useState(1);
   const [gameHistory, setGameHistory] = useState([]);
   const [matchOver, setMatchOver] = useState(false);
@@ -39,6 +41,8 @@ const TakrawApp = () => {
       currentSet,
       matchOver,
       isSwapped
+      servingPlayerIndexA,
+      servingPlayerIndexB
     };
     setGameHistory(prev => [...prev.slice(-20), currentState]);
   };
@@ -52,6 +56,8 @@ const TakrawApp = () => {
     setCurrentSet(lastState.currentSet);
     setMatchOver(lastState.matchOver);
     setIsSwapped(lastState.isSwapped);
+    setServingPlayerIndexA(lastState.servingPlayerIndexA);
+    setServingPlayerIndexB(lastState.servingPlayerIndexB);
     setGameHistory(prev => prev.slice(0, -1));
   };
 
@@ -147,61 +153,77 @@ const TakrawApp = () => {
     setMatchStarted(true);
   };
 
-  const handleScore = (winner) => {
-    if (matchOver || !matchStarted) return;
-    saveState();
-
-    const isTeamA = winner === 'A';
-    const scoringTeam = isTeamA ? teamA : teamB;
-    const losingTeam = isTeamA ? teamB : teamA;
-
-    const newScore = scoringTeam.score + 1;
-    const enemyScore = losingTeam.score;
-
-    const newScoreA = isTeamA ? newScore : teamA.score;
-    const newScoreB = !isTeamA ? newScore : teamB.score;
-
-    const isInDeuce = newScoreA >= 20 && newScoreB >= 20;
-
-    let nextServingTeam;
-    if (isInDeuce) {
-      nextServingTeam = servingTeam === 'A' ? 'B' : 'A';
-    } else {
-      nextServingTeam = winner;
-    }
-
-    let updatedTeamA_Players = [...teamA.players];
-    let updatedTeamB_Players = [...teamB.players];
-
-   
-    if (gameMode === 'team' && nextServingTeam !== servingTeam) {
-      if (nextServingTeam === 'A') {
-        updatedTeamA_Players = rotatePlayers(teamA.players);
+    const handleScore = (winner) => {
+      if (matchOver || !matchStarted) return;
+      saveState();
+    
+      const isTeamA = winner === 'A';
+      const scoringTeam = isTeamA ? teamA : teamB;
+      const losingTeam = isTeamA ? teamB : teamA;
+    
+      const newScore = scoringTeam.score + 1;
+      const enemyScore = losingTeam.score;
+    
+      const newScoreA = isTeamA ? newScore : teamA.score;
+      const newScoreB = !isTeamA ? newScore : teamB.score;
+    
+      const isInDeuce = newScoreA >= 20 && newScoreB >= 20;
+    
+      let nextServingTeam;
+      if (isInDeuce) {
+        nextServingTeam = servingTeam === 'A' ? 'B' : 'A';
       } else {
-        updatedTeamB_Players = rotatePlayers(teamB.players);
+        nextServingTeam = winner;
       }
-    }
-
-    let setWon = false;
-    if (newScore >= 21 && (newScore - enemyScore) >= 2) {
-      setWon = true;
-    } else if (newScore === 25) {
-      setWon = true;
-    }
-
-    if (setWon) {
-      handleSetWin(winner, updatedTeamA_Players, updatedTeamB_Players, newScore, enemyScore);
-    } else {
-      setTeamA(prev => ({ ...prev, players: updatedTeamA_Players, score: newScoreA }));
-      setTeamB(prev => ({ ...prev, players: updatedTeamB_Players, score: newScoreB }));
-      setServingTeam(nextServingTeam);
-
-      if (currentSet === 3 && !isSwapped && (newScoreA === 10 || newScoreB === 10)) {
-        setIsSwapped(true);
-        showSwapAlert("🔄 第三局達 10 分！自動交換場地！");
+    
+      let updatedTeamA_Players = [...teamA.players];
+      let updatedTeamB_Players = [...teamB.players];
+    
+      // 團體模式：失去發球權時，獲得發球權的隊伍輪轉
+      if (gameMode === 'team' && nextServingTeam !== servingTeam) {
+        if (nextServingTeam === 'A') {
+          updatedTeamA_Players = rotatePlayers(teamA.players);
+        } else {
+          updatedTeamB_Players = rotatePlayers(teamB.players);
+        }
       }
-    }
-  };
+    
+      // 雙打模式：隊內輪換發球員
+      let newServingPlayerIndexA = servingPlayerIndexA;
+      let newServingPlayerIndexB = servingPlayerIndexB;
+      
+      if (gameMode === 'doubles') {
+        if (winner === 'A') {
+          // A隊得分，A隊發球員輪換
+          newServingPlayerIndexA = servingPlayerIndexA === 0 ? 1 : 0;
+        } else {
+          // B隊得分，B隊發球員輪換
+          newServingPlayerIndexB = servingPlayerIndexB === 0 ? 1 : 0;
+        }
+      }
+    
+      let setWon = false;
+      if (newScore >= 21 && (newScore - enemyScore) >= 2) {
+        setWon = true;
+      } else if (newScore === 25) {
+        setWon = true;
+      }
+    
+      if (setWon) {
+        handleSetWin(winner, updatedTeamA_Players, updatedTeamB_Players, newScore, enemyScore);
+      } else {
+        setTeamA(prev => ({ ...prev, players: updatedTeamA_Players, score: newScoreA }));
+        setTeamB(prev => ({ ...prev, players: updatedTeamB_Players, score: newScoreB }));
+        setServingTeam(nextServingTeam);
+        setServingPlayerIndexA(newServingPlayerIndexA);
+        setServingPlayerIndexB(newServingPlayerIndexB);
+    
+        if (currentSet === 3 && !isSwapped && (newScoreA === 10 || newScoreB === 10)) {
+          setIsSwapped(true);
+          showSwapAlert("🔄 第三局達 10 分！自動交換場地！");
+        }
+      }
+    };
 
   const handleSetWin = (winner, lastPosA, lastPosB, finalScore, finalEnemyScore) => {
     const isTeamA = winner === 'A';
@@ -232,6 +254,8 @@ const TakrawApp = () => {
     setTeamA(prev => ({ ...prev, score: 0, sets: newSetsA, players: lastPosA }));
     setTeamB(prev => ({ ...prev, score: 0, sets: newSetsB, players: lastPosB }));
     setServingTeam(nextSetServer);
+    setServingPlayerIndexA(0);
+    setServingPlayerIndexB(0);
     setIsSwapped(false);
     showSwapAlert(`🎉 第 ${currentSet} 局結束！${winner === 'A' ? teamA.name : teamB.name} 獲勝！進入第 ${nextSet} 局！`);
   };
@@ -677,6 +701,7 @@ const TakrawApp = () => {
             isServingTeam={isTopServing}
             isSwapped={isSwapped}
             gameMode={gameMode}
+            servingPlayerIndex={topTeamKey === 'A' ? servingPlayerIndexA : servingPlayerIndexB}
           />
 
           <div className="bg-yellow-600 text-black text-center py-2 font-bold rounded-lg">
@@ -689,6 +714,7 @@ const TakrawApp = () => {
             isServingTeam={isBottomServing}
             isSwapped={isSwapped}
             gameMode={gameMode}
+            servingPlayerIndex={bottomTeamKey === 'A' ? servingPlayerIndexA : servingPlayerIndexB}
           />
         </div>
       </div>
