@@ -1,10 +1,10 @@
 import React from 'react';
 import PlayerNode from './PlayerNode';
 
-const HalfCourt = ({ team, isTop, isServingTeam, isSwapped, gameMode }) => {
+const HalfCourt = ({ team, isTop, isServingTeam, isSwapped, gameMode, servingPlayerIndex = 0 }) => {
   const p = team.players;
   
-  // 雙打模式：2 人並排，位置固定不輪轉
+  // 雙打模式：2 人並排，位置固定，根據 servingPlayerIndex 顯示發球標記
   if (gameMode === 'doubles') {
     return (
       <div className="flex-1 bg-gray-800 bg-opacity-50 rounded-xl p-4 flex flex-col justify-center relative">
@@ -13,14 +13,14 @@ const HalfCourt = ({ team, isTop, isServingTeam, isSwapped, gameMode }) => {
             number={p[0]} 
             position={0} 
             teamColor={team.color} 
-            isServing={isServingTeam}
+            isServing={isServingTeam && servingPlayerIndex === 0}
             gameMode={gameMode}
           />
           <PlayerNode 
             number={p[1]} 
             position={1} 
             teamColor={team.color} 
-            isServing={false}
+            isServing={isServingTeam && servingPlayerIndex === 1}
             gameMode={gameMode}
           />
         </div>
@@ -33,7 +33,7 @@ const HalfCourt = ({ team, isTop, isServingTeam, isSwapped, gameMode }) => {
   }
   
   // 團體模式：3 人（後中在後，左前右前在前）
-  // p[0] = 後中 (Tekong)
+  // p[0] = 後中 (Tekong) - 永遠是發球員
   // p[1] = 左前 (Left Inside) 
   // p[2] = 右前 (Right Inside)
   
