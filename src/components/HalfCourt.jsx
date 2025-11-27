@@ -3,35 +3,14 @@ import PlayerNode from './PlayerNode';
 
 const HalfCourt = ({ team, isTop, isServingTeam, isSwapped }) => {
   const p = team.players;
+  // p[0] = 後中 (Tekong)
+  // p[1] = 左前 (Left Inside) 
+  // p[2] = 右前 (Right Inside)
   
   return (
     <div className="flex-1 bg-gray-800 bg-opacity-50 rounded-xl p-4 flex flex-col justify-between relative">
       {isTop ? (
-        <>
-          <div className="flex justify-around gap-2 mb-auto">
-            <PlayerNode 
-              number={p[1]} 
-              position={1} 
-              teamColor={team.color} 
-              isServing={isServingTeam}
-            />
-            <PlayerNode 
-              number={p[2]} 
-              position={2} 
-              teamColor={team.color} 
-              isServing={false}
-            />
-          </div>
-          <div className="flex justify-center mt-4">
-            <PlayerNode 
-              number={p[0]} 
-              position={0} 
-              teamColor={team.color} 
-              isServing={false}
-            />
-          </div>
-        </>
-      ) : (
+        // Top Team (對手視角) - 後中在上方遠離網，左前右前在下方靠近網
         <>
           <div className="flex justify-center mb-4">
             <PlayerNode 
@@ -53,6 +32,32 @@ const HalfCourt = ({ team, isTop, isServingTeam, isSwapped }) => {
               position={2} 
               teamColor={team.color} 
               isServing={false}
+            />
+          </div>
+        </>
+      ) : (
+        // Bottom Team (自己視角) - 左前右前在上方靠近網，後中在下方遠離網
+        <>
+          <div className="flex justify-around gap-2 mb-4">
+            <PlayerNode 
+              number={p[1]} 
+              position={1} 
+              teamColor={team.color} 
+              isServing={false}
+            />
+            <PlayerNode 
+              number={p[2]} 
+              position={2} 
+              teamColor={team.color} 
+              isServing={false}
+            />
+          </div>
+          <div className="flex justify-center mt-auto">
+            <PlayerNode 
+              number={p[0]} 
+              position={0} 
+              teamColor={team.color} 
+              isServing={isServingTeam}
             />
           </div>
         </>
