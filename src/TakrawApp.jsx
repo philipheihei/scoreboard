@@ -444,7 +444,20 @@ const TakrawApp = () => {
           {isDeuce && <div className="text-yellow-400 font-bold text-xs">DEUCE!</div>}
         </div>
         <h1 className="text-xl font-bold flex-1 text-center">⚽ 足毽計分板</h1>
-        <div className="flex-1"></div>
+        <div className="flex-1 flex justify-end">
+          <button
+            onClick={undo}
+            disabled={gameHistory.length === 0}
+            className={`p-2 rounded-lg ${
+              gameHistory.length === 0
+                ? 'text-gray-600 cursor-not-allowed'
+                : 'text-orange-400 hover:text-orange-300'
+            }`}
+            title={`復原上一步 ${gameHistory.length > 0 ? `(${gameHistory.length})` : ''}`}
+          >
+            <Undo2 size={24} />
+          </button>
+        </div>
       </div>
 
       {isDeuce && (
@@ -529,20 +542,6 @@ const TakrawApp = () => {
             isSwapped={isSwapped}
           />
         </div>
-
-        <button
-          onClick={undo}
-          disabled={gameHistory.length === 0}
-          className={`flex items-center justify-center gap-2 py-3 rounded-lg font-bold ${
-            gameHistory.length === 0
-              ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-              : 'bg-orange-600 hover:bg-orange-700 text-white'
-          }`}
-        >
-          <Undo2 size={20} />
-          復原上一步 {gameHistory.length > 0 && `(${gameHistory.length})`}
-        </button>
-      </div>
 
       {swapMessage && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full font-bold shadow-2xl z-50 animate-bounce">
