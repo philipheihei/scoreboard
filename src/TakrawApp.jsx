@@ -1,25 +1,443 @@
-import React from 'react';
+import React, { useState } from 'react';  
+import { RotateCcw, ArrowRightLeft, Undo2 } from 'lucide-react';  
+import PlayerNode from './components/PlayerNode';  
+import HalfCourt from './components/HalfCourt';  
+import SubstitutionModal from './components/SubstitutionModal';  
 
-const TakrawApp = () => {
-  return (
-    <div style={{ 
-      backgroundColor: '#1a1a1a', 
-      color: 'white', 
-      padding: '40px',
-      minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <h1 style={{ fontSize: '48px', marginBottom: '20px' }}>
-        ✅ 部署成功！
-      </h1>
-      <p style={{ fontSize: '24px' }}>
-        足毽計分板測試版本
-      </p>
-    </div>
-  );
-};
+const TakrawApp = () => {  
+  // --- 遊戲狀態 ---  
+  const [teamA, setTeamA] = useState(null);  
+  const [teamB, setTeamB] = useState(null);  
+  const [servingTeam, setServingTeam] = useState('A');  
+  const [firstServerOfMatch, setFirstServerOfMatch] = useState('A');  
+  const [currentSet, setCurrentSet] = useState(1);  
+  const [gameHistory, setGameHistory] = useState([]);  
+  const [matchOver, setMatchOver] = useState(false);  
+  const [isSwapped, setIsSwapped] = useState(false);  
+  const [showSubModal, setShowSubModal] = useState(false);  
+  const [subTeam, setSubTeam] = useState('A');  
+  const [swapMessage, setSwapMessage] = useState(null);  
+  const [matchStarted, setMatchStarted] = useState(false);  
 
-export default TakrawApp;
+  // --- 開始畫面狀態 ---  
+  const [setupStep, setSetupStep] = useState(1);  
+  const [teamAInput, setTeamAInput] = useState('1, 2, 3, 4, 5, 6');  
+  const [teamBInput, setTeamBInput] = useState('11, 12, 13, 14, 15, 16');  
+  const [setupError, setSetupError] = useState(null);  
+  const [selectedFirstServer, setSelectedFirstServer] = useState(null);  
+
+  // --- 核心邏輯函數 ---  
+  const saveState = () => {  
+    const currentState = {  
+      teamA: JSON.parse(JSON.stringify(teamA)),  
+      teamB: JSON.parse(JSON.stringify(teamB)),  
+      servingTeam,  
+      currentSet,  
+      matchOver,  
+      isSwapped  
+    };  
+    setGameHistory(prev => [...prev.slice(-20), currentState]);  
+  };  
+
+  const undo = () => {  
+    if (gameHistory.length === 0) return;  
+    const lastState = gameHistory[gameHistory.length - 1];  
+    setTeamA(lastState.teamA);  
+    setTeamB(lastState.teamB);  
+    setServingTeam(lastState.servingTeam);  
+    setCurrentSet(lastState.currentSet);  
+    setMatchOver(lastState.matchOver);  
+    setIsSwapped(lastState.isSwapped);  
+    setGameHistory(prev => prev.slice(0, -1));  
+  };  
+
+  const rotatePlayers = (players) => {  
+    const [back, left, right] = players;  
+    return [right, back, left];  
+  };  
+
+  const showSwapAlert = (message) => {  
+    setSwapMessage(message);  
+    setTimeout(() => setSwapMessage(null), 3000);  
+  };  
+
+  const parsePlayerInput = (input) => {  
+    return input  
+      .split(/[,，\s]+/)  
+      .map(s => s.trim())  
+      .filter(s => s !== '')  
+      .map(s => parseInt(s, 10))  
+      .filter(n => !isNaN(n) && n >= 0);  
+  };  
+
+  const validateAndProceed = () => {  
+    setSetupError(null);  
+    const teamANumbers = parsePlayerInput(teamAInput);  
+    const teamBNumbers = parsePlayerInput(teamBInput);  
+
+    if (teamANumbers.length < 3) {  
+      setSetupError("「自己」隊伍至少需要 3 位球員");  
+      return;  
+    }  
+    if (teamANumbers.length > 6) {  
+      setSetupError("「自己」隊伍最多 6 位球員");  
+      return;  
+    }  
+    if (teamBNumbers.length < 3) {  
+      setSetupError("「對手」隊伍至少需要 3 位球員");  
+      return;  
+    }  
+    if (teamBNumbers.length > 6) {  
+      setSetupError("「對手」隊伍最多 6 位球員");  
+      return;  
+    }  
+    if (new Set(teamANumbers).size !== teamANumbers.length) {  
+      setSetupError("「自己」隊伍的球員號碼不能重複");  
+      return;  
+    }  
+    if (new Set(teamBNumbers).size !== teamBNumbers.length) {  
+      setSetupError("「對手」隊伍的球員號碼不能重複");  
+      return;  
+    }  
+
+    setSetupStep(2);  
+  };  
+
+  const startMatch = () => {  
+    if (!selectedFirstServer) {  
+      setSetupError("請選擇哪隊先發球");  
+      return;  
+    }  
+
+    const teamANumbers = parsePlayerInput(teamAInput);  
+    const teamBNumbers = parsePlayerInput(teamBInput);  
+
+    const newTeamA = {  
+      name: "自己",  
+      players: teamANumbers.slice(0, 3),  
+      bench: teamANumbers.slice(3),  
+      color: "bg-blue-600",  
+      score: 0,  
+      sets: 0  
+    };  
+
+    const newTeamB = {  
+      name: "對手",  
+      players: teamBNumbers.slice(0, 3),  
+      bench: teamBNumbers.slice(3),  
+      color: "bg-red-600",  
+      score: 0,  
+      sets: 0  
+    };  
+
+    setTeamA(newTeamA);  
+    setTeamB(newTeamB);  
+    setServingTeam(selectedFirstServer);  
+    setFirstServerOfMatch(selectedFirstServer);  
+    setMatchStarted(true);  
+  };  
+
+  const handleScore = (winner) => {  
+    if (matchOver || !matchStarted) return;  
+    saveState();  
+
+    const isTeamA = winner === 'A';  
+    const scoringTeam = isTeamA ? teamA : teamB;  
+    const losingTeam = isTeamA ? teamB : teamA;  
+
+    const newScore = scoringTeam.score + 1;  
+    const enemyScore = losingTeam.score;  
+
+    const newScoreA = isTeamA ? newScore : teamA.score;  
+    const newScoreB = !isTeamA ? newScore : teamB.score;  
+
+    const isInDeuce = newScoreA >= 20 && newScoreB >= 20;  
+
+    let nextServingTeam;  
+    if (isInDeuce) {  
+      nextServingTeam = servingTeam === 'A' ? 'B' : 'A';  
+    } else {  
+      nextServingTeam = winner;  
+    }  
+
+    let updatedTeamA_Players = [...teamA.players];  
+    let updatedTeamB_Players = [...teamB.players];  
+
+    if (nextServingTeam !== servingTeam) {  
+      if (nextServingTeam === 'A') {  
+        updatedTeamA_Players = rotatePlayers(teamA.players);  
+      } else {  
+        updatedTeamB_Players = rotatePlayers(teamB.players);  
+      }  
+    }  
+
+    let setWon = false;  
+    if (newScore >= 21 && (newScore - enemyScore) >= 2) {  
+      setWon = true;  
+    } else if (newScore === 25) {  
+      setWon = true;  
+    }  
+
+    if (setWon) {  
+      handleSetWin(winner, updatedTeamA_Players, updatedTeamB_Players, newScore, enemyScore);  
+    } else {  
+      setTeamA(prev => ({ ...prev, players: updatedTeamA_Players, score: newScoreA }));  
+      setTeamB(prev => ({ ...prev, players: updatedTeamB_Players, score: newScoreB }));  
+      setServingTeam(nextServingTeam);  
+
+      if (currentSet === 3 && !isSwapped && (newScoreA === 10 || newScoreB === 10)) {  
+        setIsSwapped(true);  
+        showSwapAlert("🔄 第三局達 10 分！自動交換場地！");  
+      }  
+    }  
+  };  
+
+  const handleSetWin = (winner, lastPosA, lastPosB, finalScore, finalEnemyScore) => {  
+    const isTeamA = winner === 'A';  
+    const newSetsA = teamA.sets + (isTeamA ? 1 : 0);  
+    const newSetsB = teamB.sets + (!isTeamA ? 1 : 0);  
+
+    const finalScoreA = isTeamA ? finalScore : finalEnemyScore;  
+    const finalScoreB = !isTeamA ? finalScore : finalEnemyScore;  
+
+    if (newSetsA === 2 || newSetsB === 2) {  
+      setTeamA(prev => ({ ...prev, score: finalScoreA, sets: newSetsA }));  
+      setTeamB(prev => ({ ...prev, score: finalScoreB, sets: newSetsB }));  
+      setMatchOver(true);  
+      showSwapAlert(`🏆 比賽結束！${winner === 'A' ? teamA.name : teamB.name} 獲勝！`);  
+      return;  
+    }  
+
+    const nextSet = currentSet + 1;  
+    setCurrentSet(nextSet);  
+
+    let nextSetServer;  
+    if (nextSet === 2) {  
+      nextSetServer = winner === 'A' ? 'B' : 'A';  
+    } else {  
+      nextSetServer = firstServerOfMatch;  
+    }  
+
+    setTeamA(prev => ({ ...prev, score: 0, sets: newSetsA, players: lastPosA }));  
+    setTeamB(prev => ({ ...prev, score: 0, sets: newSetsB, players: lastPosB }));  
+    setServingTeam(nextSetServer);  
+    setIsSwapped(false);  
+    showSwapAlert(`🎉 第 ${currentSet} 局結束！${winner === 'A' ? teamA.name : teamB.name} 獲勝！進入第 ${nextSet} 局！`);  
+  };  
+
+  const handleSubstitution = (playerOut, playerIn) => {  
+    saveState();  
+    const targetSetTeam = subTeam === 'A' ? setTeamA : setTeamB;  
+    
+    targetSetTeam(prev => {  
+      const newPlayers = prev.players.map(p => p === playerOut ? playerIn : p);  
+      const newBench = prev.bench.filter(p => p !== playerIn);  
+      newBench.push(playerOut);  
+      
+      return {  
+        ...prev,  
+        players: newPlayers,  
+        bench: newBench  
+      };  
+    });  
+    
+    setShowSubModal(false);  
+  };  
+
+  const handleManualSwap = () => {  
+    saveState();  
+    setIsSwapped(prev => !prev);  
+    showSwapAlert("🔄 已手動交換場地！");  
+  };  
+
+  // --- 開始畫面 ---  
+  if (!matchStarted) {  
+    const teamANumbers = parsePlayerInput(teamAInput);  
+    const teamBNumbers = parsePlayerInput(teamBInput);  
+
+    return (  
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 text-white p-4 flex items-center justify-center">  
+        <div className="max-w-4xl w-full bg-gray-800 bg-opacity-50 rounded-3xl p-8 backdrop-blur-sm">  
+          <h1 className="text-4xl font-bold text-center mb-2">⚽ 足毽計分板</h1>  
+          <p className="text-center text-gray-300 mb-8">  
+            {setupStep === 1 ? '步驟 1/2：輸入球員號碼' : '步驟 2/2：選擇發球權'}  
+          </p>  
+
+          {setupError && (  
+            <div className="bg-red-600 text-white p-4 rounded-lg mb-6 text-center font-bold">  
+              {setupError}  
+            </div>  
+          )}  
+
+          {setupStep === 1 ? (  
+            <div className="space-y-6">  
+              {/* 自己隊伍輸入 */}  
+              <div className="bg-blue-900 bg-opacity-30 p-6 rounded-xl">  
+                <h3 className="text-2xl font-bold mb-2">🔵 自己</h3>  
+                <p className="text-sm text-gray-300 mb-3">  
+                  已輸入 {teamANumbers.length} 人  
+                  {teamANumbers.length >= 3 && teamANumbers.length <= 6 && ' ✓'}  
+                </p>  
+                <textarea  
+                  value={teamAInput}  
+                  onChange={(e) => setTeamAInput(e.target.value)}  
+                  placeholder="例如：1, 2, 3, 4, 5, 6"  
+                  className="w-full p-3 bg-gray-800 border border-blue-500/30 rounded-lg text-white text-lg focus:outline-none focus:border-blue-400"  
+                />  
+                <p className="text-xs text-gray-400 mt-2">  
+                  輸入 3-6 個號碼，用逗號或空格分隔。前 3 位為場上球員（後中、左前、右前）  
+                </p>  
+                
+                {teamANumbers.length >= 3 && (  
+                  <div className="mt-3 flex flex-wrap gap-2">  
+                    <span className="text-sm text-gray-300">預覽：</span>  
+                    {teamANumbers.slice(0, 3).map((n, i) => (  
+                      <span key={i} className="bg-blue-600 px-3 py-1 rounded-full text-sm">  
+                        {n} {i === 0 ? '(後中)' : i === 1 ? '(左前)' : '(右前)'}  
+                      </span>  
+                    ))}  
+                    {teamANumbers.slice(3).map((n, i) => (  
+                      <span key={i + 3} className="bg-blue-600/50 px-3 py-1 rounded-full text-sm">  
+                        {n} (後備)  
+                      </span>  
+                    ))}  
+                  </div>  
+                )}  
+              </div>  
+
+              {/* 對手隊伍輸入 */}  
+              <div className="bg-red-900 bg-opacity-30 p-6 rounded-xl">  
+                <h3 className="text-2xl font-bold mb-2">🔴 對手</h3>  
+                <p className="text-sm text-gray-300 mb-3">  
+                  已輸入 {teamBNumbers.length} 人  
+                  {teamBNumbers.length >= 3 && teamBNumbers.length <= 6 && ' ✓'}  
+                </p>  
+                <textarea  
+                  value={teamBInput}  
+                  onChange={(e) => setTeamBInput(e.target.value)}  
+                  placeholder="例如：11, 12, 13, 14, 15, 16"  
+                  className="w-full p-3 bg-gray-800 border border-red-500/30 rounded-lg text-white text-lg focus:outline-none focus:border-red-400"  
+                />  
+                <p className="text-xs text-gray-400 mt-2">  
+                  輸入 3-6 個號碼。如對方只有 5 人，輸入 5 個號碼即可  
+                </p>  
+                
+                {teamBNumbers.length >= 3 && (  
+                  <div className="mt-3 flex flex-wrap gap-2">  
+                    <span className="text-sm text-gray-300">預覽：</span>  
+                    {teamBNumbers.slice(0, 3).map((n, i) => (  
+                      <span key={i} className="bg-red-600 px-3 py-1 rounded-full text-sm">  
+                        {n} {i === 0 ? '(後中)' : i === 1 ? '(左前)' : '(右前)'}  
+                      </span>  
+                    ))}  
+                    {teamBNumbers.slice(3).map((n, i) => (  
+                      <span key={i + 3} className="bg-red-600/50 px-3 py-1 rounded-full text-sm">  
+                        {n} (後備)  
+                      </span>  
+                    ))}  
+                  </div>  
+                )}  
+              </div>  
+
+              <button  
+                onClick={validateAndProceed}  
+                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-all text-xl"  
+              >  
+                下一步：選擇發球權 →  
+              </button>  
+            </div>  
+          ) : (  
+            <div className="space-y-6">  
+              <h3 className="text-2xl font-bold text-center mb-6">請選擇哪隊先發球</h3>  
+              
+              <div className="grid grid-cols-2 gap-4 mb-6">  
+                <button  
+                  onClick={() => setSelectedFirstServer('A')}  
+                  className={`p-6 rounded-xl border-4 transition-all ${  
+                    selectedFirstServer === 'A'  
+                      ? 'bg-blue-600 border-yellow-400 scale-105'  
+                      : 'bg-blue-600/30 border-blue-600/50 hover:bg-blue-600/50'  
+                  }`}  
+                >  
+                  <div className="text-3xl mb-2">🔵</div>  
+                  <div className="font-bold text-xl">自己</div>  
+                  <div className="text-sm mt-1">先發球</div>  
+                  {selectedFirstServer === 'A' && (  
+                    <div className="mt-2 text-2xl">✓</div>  
+                  )}  
+                </button>  
+
+                <button  
+                  onClick={() => setSelectedFirstServer('B')}  
+                  className={`p-6 rounded-xl border-4 transition-all ${  
+                    selectedFirstServer === 'B'  
+                      ? 'bg-red-600 border-yellow-400 scale-105'  
+                      : 'bg-red-600/30 border-red-600/50 hover:bg-red-600/50'  
+                  }`}  
+                >  
+                  <div className="text-3xl mb-2">🔴</div>  
+                  <div className="font-bold text-xl">對手</div>  
+                  <div className="text-sm mt-1">先發球</div>  
+                  {selectedFirstServer === 'B' && (  
+                    <div className="mt-2 text-2xl">✓</div>  
+                  )}  
+                </button>  
+              </div>  
+
+              <div className="bg-gray-700 rounded-xl p-4 mb-6">  
+                <h4 className="font-bold mb-3">球員名單確認</h4>  
+                <div className="space-y-2 text-sm">  
+                  <div>  
+                    <span className="text-blue-400 font-bold">自己：</span>  
+                    <div>場上：{parsePlayerInput(teamAInput).slice(0, 3).join(', ')}</div>  
+                    {parsePlayerInput(teamAInput).length > 3 && (  
+                      <div className="text-gray-400">後備：{parsePlayerInput(teamAInput).slice(3).join(', ')}</div>  
+                    )}  
+                  </div>  
+                  <div>  
+                    <span className="text-red-400 font-bold">對手：</span>  
+                    <div>場上：{parsePlayerInput(teamBInput).slice(0, 3).join(', ')}</div>  
+                    {parsePlayerInput(teamBInput).length > 3 && (  
+                      <div className="text-gray-400">後備：{parsePlayerInput(teamBInput).slice(3).join(', ')}</div>  
+                    )}  
+                  </div>  
+                </div>  
+              </div>  
+
+              <div className="flex gap-3">  
+                <button  
+                  onClick={() => {  
+                    setSetupStep(1);  
+                    setSetupError(null);  
+                  }}  
+                  className="flex-1 bg-gray-700 hover:bg-gray-600 text-white font-bold py-4 rounded-xl transition-all"  
+                >  
+                  ← 返回修改  
+                </button>  
+                <button  
+                  onClick={startMatch}  
+                  className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-all"  
+                >  
+                  開始比賽 🎾  
+                </button>  
+              </div>  
+            </div>  
+          )}  
+        </div>  
+      </div>  
+    );  
+  }  
+
+  // --- 比賽畫面 ---  
+  const topTeam = isSwapped ? teamA : teamB;  
+  const bottomTeam = isSwapped ? teamB : teamA;  
+  const topTeamKey = isSwapped ? 'A' : 'B';  
+  const bottomTeamKey = isSwapped ? 'B' : 'A';  
+  const isTopServing = servingTeam === topTeamKey;  
+  const isBottomServing = servingTeam === bottomTeamKey;  
+  const isDeuce = teamA.score >= 20 && teamB.score >= 20;  
+
+  return (  
+    <div className="h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 text-white flex flex-col">  
+      {/* 頂部資訊列 */}  
+      
