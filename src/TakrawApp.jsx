@@ -40,7 +40,7 @@ const TakrawApp = () => {
       servingTeam,
       currentSet,
       matchOver,
-      isSwapped
+      isSwapped,
       servingPlayerIndexA,
       servingPlayerIndexB
     };
