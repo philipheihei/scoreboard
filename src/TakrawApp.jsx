@@ -441,11 +441,21 @@ const TakrawApp = () => {
       {/* 頂部資訊列（含復原按鈕） */}
       <div className="bg-gray-900 bg-opacity-80 p-3 flex justify-between items-center">
         <div className="text-center flex-1">
-          <div className="text-sm text-gray-400">Set {currentSet}</div>
+          <div className="text-2xl font-bold text-white">Set {currentSet}</div>
           {isDeuce && <div className="text-yellow-400 font-bold text-xs">DEUCE!</div>}
         </div>
         <h1 className="text-xl font-bold flex-1 text-center">⚽ 足毽計分板</h1>
-        <div className="flex-1 flex justify-end">
+        <div className="flex-1 flex justify-end gap-2">
+          <button
+            onClick={() => window.location.reload()}
+            className="p-2 rounded-lg text-gray-300 hover:text-white"
+            title="返回主頁"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+              <polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </button>
           <button
             onClick={undo}
             disabled={gameHistory.length === 0}
