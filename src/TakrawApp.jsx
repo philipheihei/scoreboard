@@ -192,12 +192,11 @@ const TakrawApp = () => {
       let newServingPlayerIndexA = servingPlayerIndexA;
       let newServingPlayerIndexB = servingPlayerIndexB;
       
-      if (gameMode === 'doubles') {
-        if (winner === 'A') {
-          // A隊得分，A隊發球員輪換
+      if (gameMode === 'doubles' && nextServingTeam !== servingTeam) {
+        // 發球權轉換：新獲得發球權的隊伍換另一人發球
+        if (nextServingTeam === 'A') {
           newServingPlayerIndexA = servingPlayerIndexA === 0 ? 1 : 0;
         } else {
-          // B隊得分，B隊發球員輪換
           newServingPlayerIndexB = servingPlayerIndexB === 0 ? 1 : 0;
         }
       }
