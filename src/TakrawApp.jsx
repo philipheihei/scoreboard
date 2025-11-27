@@ -298,7 +298,7 @@ const TakrawApp = () => {
                   className="bg-gradient-to-br from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 rounded-2xl p-8 transition-all transform hover:scale-105 border-4 border-purple-400/30"
                 >
                   <div className="text-6xl mb-4">👥</div>
-                  <div className="text-3xl font-bold mb-3">雙打</div>
+                  <div className="text-3xl font-bold mb-3">雙打 (Double)</div>
                   <div className="text-sm text-purple-200 space-y-2">
                     <div>✓ 每隊 2 人在場</div>
                     <div>✓ 無替補球員</div>
@@ -317,7 +317,7 @@ const TakrawApp = () => {
                   className="bg-gradient-to-br from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 rounded-2xl p-8 transition-all transform hover:scale-105 border-4 border-green-400/30"
                 >
                   <div className="text-6xl mb-4">👥👥👥</div>
-                  <div className="text-3xl font-bold mb-3">團體 (Regu)</div>
+                  <div className="text-3xl font-bold mb-3">團體 (Team)</div>
                   <div className="text-sm text-green-200 space-y-2">
                     <div>✓ 每隊 3 人在場</div>
                     <div>✓ 最多 3 人後備</div>
