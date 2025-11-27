@@ -6,6 +6,9 @@ import HalfCourt from './components/HalfCourt';
 import SubstitutionModal from './components/SubstitutionModal';
 
 const TakrawApp = () => {
+  // --- 遊戲模式 ---
+  const [gameMode, setGameMode] = useState(null); // 'doubles' 或 'team'
+  
   // --- 遊戲狀態 ---
   const [teamA, setTeamA] = useState(null);
   const [teamB, setTeamB] = useState(null);
@@ -21,7 +24,7 @@ const TakrawApp = () => {
   const [matchStarted, setMatchStarted] = useState(false);
 
   // --- 開始畫面狀態 ---
-  const [setupStep, setSetupStep] = useState(1);
+  const [setupStep, setSetupStep] = useState(0); // 0 = 選擇模式, 1 = 輸入球員, 2 = 選發球權
   const [teamAInput, setTeamAInput] = useState('1, 2, 3, 4, 5, 6');
   const [teamBInput, setTeamBInput] = useState('11, 12, 13, 14, 15, 16');
   const [setupError, setSetupError] = useState(null);
@@ -75,21 +78,25 @@ const TakrawApp = () => {
     setSetupError(null);
     const teamANumbers = parsePlayerInput(teamAInput);
     const teamBNumbers = parsePlayerInput(teamBInput);
-
-    if (teamANumbers.length < 3) {
-      setSetupError("「自己」隊伍至少需要 3 位球員");
+  
+    const minPlayers = gameMode === 'doubles' ? 2 : 3;
+    const maxPlayers = gameMode === 'doubles' ? 2 : 6;
+    const modeName = gameMode === 'doubles' ? '雙打' : '團體';
+  
+    if (teamANumbers.length < minPlayers) {
+      setSetupError(`「自己」隊伍${modeName}模式需要 ${minPlayers} 位球員`);
       return;
     }
-    if (teamANumbers.length > 6) {
-      setSetupError("「自己」隊伍最多 6 位球員");
+    if (teamANumbers.length > maxPlayers) {
+      setSetupError(`「自己」隊伍${modeName}模式最多 ${maxPlayers} 位球員`);
       return;
     }
-    if (teamBNumbers.length < 3) {
-      setSetupError("「對手」隊伍至少需要 3 位球員");
+    if (teamBNumbers.length < minPlayers) {
+      setSetupError(`「對手」隊伍${modeName}模式需要 ${minPlayers} 位球員`);
       return;
     }
-    if (teamBNumbers.length > 6) {
-      setSetupError("「對手」隊伍最多 6 位球員");
+    if (teamBNumbers.length > maxPlayers) {
+      setSetupError(`「對手」隊伍${modeName}模式最多 ${maxPlayers} 位球員`);
       return;
     }
     if (new Set(teamANumbers).size !== teamANumbers.length) {
@@ -100,7 +107,7 @@ const TakrawApp = () => {
       setSetupError("「對手」隊伍的球員號碼不能重複");
       return;
     }
-
+  
     setSetupStep(2);
   };
 
@@ -109,23 +116,25 @@ const TakrawApp = () => {
       setSetupError("請選擇哪隊先發球");
       return;
     }
-
+  
     const teamANumbers = parsePlayerInput(teamAInput);
     const teamBNumbers = parsePlayerInput(teamBInput);
-
+  
+    const playersPerTeam = gameMode === 'doubles' ? 2 : 3;
+  
     const newTeamA = {
       name: "自己",
-      players: teamANumbers.slice(0, 3),
-      bench: teamANumbers.slice(3),
+      players: teamANumbers.slice(0, playersPerTeam),
+      bench: teamANumbers.slice(playersPerTeam),
       color: "bg-blue-600",
       score: 0,
       sets: 0
     };
-
+  
     const newTeamB = {
       name: "對手",
-      players: teamBNumbers.slice(0, 3),
-      bench: teamBNumbers.slice(3),
+      players: teamBNumbers.slice(0, playersPerTeam),
+      bench: teamBNumbers.slice(playersPerTeam),
       color: "bg-red-600",
       score: 0,
       sets: 0
@@ -255,89 +264,191 @@ const TakrawApp = () => {
   if (!matchStarted) {
     const teamANumbers = parsePlayerInput(teamAInput);
     const teamBNumbers = parsePlayerInput(teamBInput);
-
+  
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 text-white p-4 flex items-center justify-center">
         <div className="max-w-4xl w-full bg-gray-800 bg-opacity-50 rounded-3xl p-8 backdrop-blur-sm">
           <h1 className="text-4xl font-bold text-center mb-2">⚽ 足毽計分板</h1>
           <p className="text-center text-gray-300 mb-8">
-            {setupStep === 1 ? '步驟 1/2：輸入球員號碼' : '步驟 2/2：選擇發球權'}
+            {setupStep === 0 && '步驟 1/3：選擇比賽模式'}
+            {setupStep === 1 && '步驟 2/3：輸入球員號碼'}
+            {setupStep === 2 && '步驟 3/3：選擇發球權'}
           </p>
-
+  
           {setupError && (
             <div className="bg-red-600 text-white p-4 rounded-lg mb-6 text-center font-bold">
               {setupError}
             </div>
           )}
-
-          {setupStep === 1 ? (
+  
+          {/* 步驟 0：選擇模式 */}
+          {setupStep === 0 && (
             <div className="space-y-6">
+              <h3 className="text-2xl font-bold text-center mb-6">請選擇比賽模式</h3>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 雙打模式 */}
+                <button
+                  onClick={() => {
+                    setGameMode('doubles');
+                    setTeamAInput('1, 2');
+                    setTeamBInput('11, 12');
+                    setSetupStep(1);
+                  }}
+                  className="bg-gradient-to-br from-purple-600 to-purple-800 hover:from-purple-500 hover:to-purple-700 rounded-2xl p-8 transition-all transform hover:scale-105 border-4 border-purple-400/30"
+                >
+                  <div className="text-6xl mb-4">👥</div>
+                  <div className="text-3xl font-bold mb-3">雙打</div>
+                  <div className="text-sm text-purple-200 space-y-2">
+                    <div>✓ 每隊 2 人在場</div>
+                    <div>✓ 無替補球員</div>
+                    <div>✓ 輪流發球</div>
+                  </div>
+                </button>
+  
+                {/* 團體模式 */}
+                <button
+                  onClick={() => {
+                    setGameMode('team');
+                    setTeamAInput('1, 2, 3, 4, 5, 6');
+                    setTeamBInput('11, 12, 13, 14, 15, 16');
+                    setSetupStep(1);
+                  }}
+                  className="bg-gradient-to-br from-green-600 to-green-800 hover:from-green-500 hover:to-green-700 rounded-2xl p-8 transition-all transform hover:scale-105 border-4 border-green-400/30"
+                >
+                  <div className="text-6xl mb-4">👥👥👥</div>
+                  <div className="text-3xl font-bold mb-3">團體 (Regu)</div>
+                  <div className="text-sm text-green-200 space-y-2">
+                    <div>✓ 每隊 3 人在場</div>
+                    <div>✓ 最多 3 人後備</div>
+                    <div>✓ 可換人</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+  
+          {/* 步驟 1：輸入球員 */}
+          {setupStep === 1 && (
+            <div className="space-y-6">
+              {/* 返回按鈕 */}
+              <button
+                onClick={() => {
+                  setSetupStep(0);
+                  setGameMode(null);
+                  setSetupError(null);
+                }}
+                className="text-gray-400 hover:text-white mb-4"
+              >
+                ← 返回選擇模式
+              </button>
+  
+              <div className="bg-gray-700 rounded-xl p-4 mb-4">
+                <div className="text-center font-bold text-lg">
+                  {gameMode === 'doubles' ? '🎾 雙打模式' : '👥 團體模式'}
+                </div>
+              </div>
+  
               <div className="bg-blue-900 bg-opacity-30 p-6 rounded-xl">
                 <h3 className="text-2xl font-bold mb-2">🔵 自己</h3>
                 <p className="text-sm text-gray-300 mb-3">
                   已輸入 {teamANumbers.length} 人
-                  {teamANumbers.length >= 3 && teamANumbers.length <= 6 && ' ✓'}
+                  {gameMode === 'doubles' && teamANumbers.length === 2 && ' ✓'}
+                  {gameMode === 'team' && teamANumbers.length >= 3 && teamANumbers.length <= 6 && ' ✓'}
                 </p>
                 <textarea
                   value={teamAInput}
                   onChange={(e) => setTeamAInput(e.target.value)}
-                  placeholder="例如：1, 2, 3, 4, 5, 6"
+                  placeholder={gameMode === 'doubles' ? "例如：1, 2" : "例如：1, 2, 3, 4, 5, 6"}
                   className="w-full p-3 bg-gray-800 border border-blue-500/30 rounded-lg text-white text-lg focus:outline-none focus:border-blue-400"
+                  rows="2"
                 />
                 <p className="text-xs text-gray-400 mt-2">
-                  輸入 3-6 個號碼，用逗號或空格分隔。前 3 位為場上球員（後中、左前、右前）
+                  {gameMode === 'doubles' 
+                    ? '輸入 2 個號碼（左、右）' 
+                    : '輸入 3-6 個號碼，前 3 位為場上球員（後中、左前、右前）'
+                  }
                 </p>
                 
-                {teamANumbers.length >= 3 && (
+                {teamANumbers.length >= (gameMode === 'doubles' ? 2 : 3) && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="text-sm text-gray-300">預覽：</span>
-                    {teamANumbers.slice(0, 3).map((n, i) => (
-                      <span key={i} className="bg-blue-600 px-3 py-1 rounded-full text-sm">
-                        {n} {i === 0 ? '(後中)' : i === 1 ? '(左前)' : '(右前)'}
-                      </span>
-                    ))}
-                    {teamANumbers.slice(3).map((n, i) => (
-                      <span key={i + 3} className="bg-blue-600/50 px-3 py-1 rounded-full text-sm">
-                        {n} (後備)
-                      </span>
-                    ))}
+                    {gameMode === 'doubles' ? (
+                      <>
+                        {teamANumbers.slice(0, 2).map((n, i) => (
+                          <span key={i} className="bg-blue-600 px-3 py-1 rounded-full text-sm">
+                            {n} {i === 0 ? '(左)' : '(右)'}
+                          </span>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {teamANumbers.slice(0, 3).map((n, i) => (
+                          <span key={i} className="bg-blue-600 px-3 py-1 rounded-full text-sm">
+                            {n} {i === 0 ? '(後中)' : i === 1 ? '(左前)' : '(右前)'}
+                          </span>
+                        ))}
+                        {teamANumbers.slice(3).map((n, i) => (
+                          <span key={i + 3} className="bg-blue-600/50 px-3 py-1 rounded-full text-sm">
+                            {n} (後備)
+                          </span>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
-
+  
               <div className="bg-red-900 bg-opacity-30 p-6 rounded-xl">
                 <h3 className="text-2xl font-bold mb-2">🔴 對手</h3>
                 <p className="text-sm text-gray-300 mb-3">
                   已輸入 {teamBNumbers.length} 人
-                  {teamBNumbers.length >= 3 && teamBNumbers.length <= 6 && ' ✓'}
+                  {gameMode === 'doubles' && teamBNumbers.length === 2 && ' ✓'}
+                  {gameMode === 'team' && teamBNumbers.length >= 3 && teamBNumbers.length <= 6 && ' ✓'}
                 </p>
                 <textarea
                   value={teamBInput}
                   onChange={(e) => setTeamBInput(e.target.value)}
-                  placeholder="例如：11, 12, 13, 14, 15, 16"
+                  placeholder={gameMode === 'doubles' ? "例如：11, 12" : "例如：11, 12, 13, 14, 15, 16"}
                   className="w-full p-3 bg-gray-800 border border-red-500/30 rounded-lg text-white text-lg focus:outline-none focus:border-red-400"
+                  rows="2"
                 />
                 <p className="text-xs text-gray-400 mt-2">
-                  輸入 3-6 個號碼。如對方只有 5 人，輸入 5 個號碼即可
+                  {gameMode === 'doubles' 
+                    ? '輸入 2 個號碼' 
+                    : '輸入 3-6 個號碼。如對方只有 5 人，輸入 5 個號碼即可'
+                  }
                 </p>
                 
-                {teamBNumbers.length >= 3 && (
+                {teamBNumbers.length >= (gameMode === 'doubles' ? 2 : 3) && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     <span className="text-sm text-gray-300">預覽：</span>
-                    {teamBNumbers.slice(0, 3).map((n, i) => (
-                      <span key={i} className="bg-red-600 px-3 py-1 rounded-full text-sm">
-                        {n} {i === 0 ? '(後中)' : i === 1 ? '(左前)' : '(右前)'}
-                      </span>
-                    ))}
-                    {teamBNumbers.slice(3).map((n, i) => (
-                      <span key={i + 3} className="bg-red-600/50 px-3 py-1 rounded-full text-sm">
-                        {n} (後備)
-                      </span>
-                    ))}
+                    {gameMode === 'doubles' ? (
+                      <>
+                        {teamBNumbers.slice(0, 2).map((n, i) => (
+                          <span key={i} className="bg-red-600 px-3 py-1 rounded-full text-sm">
+                            {n} {i === 0 ? '(左)' : '(右)'}
+                          </span>
+                        ))}
+                      </>
+                    ) : (
+                      <>
+                        {teamBNumbers.slice(0, 3).map((n, i) => (
+                          <span key={i} className="bg-red-600 px-3 py-1 rounded-full text-sm">
+                            {n} {i === 0 ? '(後中)' : i === 1 ? '(左前)' : '(右前)'}
+                          </span>
+                        ))}
+                        {teamBNumbers.slice(3).map((n, i) => (
+                          <span key={i + 3} className="bg-red-600/50 px-3 py-1 rounded-full text-sm">
+                            {n} (後備)
+                          </span>
+                        ))}
+                      </>
+                    )}
                   </div>
                 )}
               </div>
-
+  
               <button
                 onClick={validateAndProceed}
                 className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-xl transition-all text-xl"
@@ -345,7 +456,10 @@ const TakrawApp = () => {
                 下一步：選擇發球權 →
               </button>
             </div>
-          ) : (
+          )}
+  
+          {/* 步驟 2：選擇發球權 */}
+          {setupStep === 2 && (
             <div className="space-y-6">
               <h3 className="text-2xl font-bold text-center mb-6">請選擇哪隊先發球</h3>
               
@@ -365,7 +479,7 @@ const TakrawApp = () => {
                     <div className="mt-2 text-2xl">✓</div>
                   )}
                 </button>
-
+  
                 <button
                   onClick={() => setSelectedFirstServer('B')}
                   className={`p-6 rounded-xl border-4 transition-all ${
@@ -382,27 +496,31 @@ const TakrawApp = () => {
                   )}
                 </button>
               </div>
-
+  
               <div className="bg-gray-700 rounded-xl p-4 mb-6">
                 <h4 className="font-bold mb-3">球員名單確認</h4>
                 <div className="space-y-2 text-sm">
                   <div>
                     <span className="text-blue-400 font-bold">自己：</span>
-                    <div>場上：{parsePlayerInput(teamAInput).slice(0, 3).join(', ')}</div>
-                    {parsePlayerInput(teamAInput).length > 3 && (
+                    <div>
+                      場上：{parsePlayerInput(teamAInput).slice(0, gameMode === 'doubles' ? 2 : 3).join(', ')}
+                    </div>
+                    {gameMode === 'team' && parsePlayerInput(teamAInput).length > 3 && (
                       <div className="text-gray-400">後備：{parsePlayerInput(teamAInput).slice(3).join(', ')}</div>
                     )}
                   </div>
                   <div>
                     <span className="text-red-400 font-bold">對手：</span>
-                    <div>場上：{parsePlayerInput(teamBInput).slice(0, 3).join(', ')}</div>
-                    {parsePlayerInput(teamBInput).length > 3 && (
+                    <div>
+                      場上：{parsePlayerInput(teamBInput).slice(0, gameMode === 'doubles' ? 2 : 3).join(', ')}
+                    </div>
+                    {gameMode === 'team' && parsePlayerInput(teamBInput).length > 3 && (
                       <div className="text-gray-400">後備：{parsePlayerInput(teamBInput).slice(3).join(', ')}</div>
                     )}
                   </div>
                 </div>
               </div>
-
+  
               <div className="flex gap-3">
                 <button
                   onClick={() => {
@@ -504,36 +622,50 @@ const TakrawApp = () => {
         </div>
 
         {/* 功能按鈕 */}
-        <div className="grid grid-cols-3 gap-2">
-          <button
-            onClick={() => {
-              setSubTeam('A');
-              setShowSubModal(true);
-            }}
-            className="flex items-center justify-center gap-2 bg-blue-900 text-blue-200 py-3 rounded-lg hover:bg-blue-800"
-          >
-            <ArrowRightLeft size={16} />
-            <span className="text-sm">自己換人</span>
-          </button>
-
-          <button
-            onClick={handleManualSwap}
-            className="flex items-center justify-center gap-2 bg-purple-900 text-purple-200 py-3 rounded-lg hover:bg-purple-800"
-          >
-            <RotateCcw size={16} />
-            <span className="text-xs">{isSwapped ? '🔄 已換場 - 點擊換回' : '手動交換場地'}</span>
-          </button>
-
-          <button
-            onClick={() => {
-              setSubTeam('B');
-              setShowSubModal(true);
-            }}
-            className="flex items-center justify-center gap-2 bg-red-900 text-red-200 py-3 rounded-lg hover:bg-red-800"
-          >
-            <ArrowRightLeft size={16} />
-            <span className="text-sm">對手換人</span>
-          </button>
+        <div className={gameMode === 'doubles' ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-3 gap-2'}>
+          {gameMode === 'team' && (
+            <>
+              <button
+                onClick={() => {
+                  setSubTeam('A');
+                  setShowSubModal(true);
+                }}
+                className="flex items-center justify-center gap-2 bg-blue-900 text-blue-200 py-3 rounded-lg hover:bg-blue-800"
+              >
+                <ArrowRightLeft size={16} />
+                <span className="text-sm">自己換人</span>
+              </button>
+        
+              <button
+                onClick={handleManualSwap}
+                className="flex items-center justify-center gap-2 bg-purple-900 text-purple-200 py-3 rounded-lg hover:bg-purple-800"
+              >
+                <RotateCcw size={16} />
+                <span className="text-xs">{isSwapped ? '🔄 已換場 - 點擊換回' : '手動交換場地'}</span>
+              </button>
+        
+              <button
+                onClick={() => {
+                  setSubTeam('B');
+                  setShowSubModal(true);
+                }}
+                className="flex items-center justify-center gap-2 bg-red-900 text-red-200 py-3 rounded-lg hover:bg-red-800"
+              >
+                <ArrowRightLeft size={16} />
+                <span className="text-sm">對手換人</span>
+              </button>
+            </>
+          )}
+          
+          {gameMode === 'doubles' && (
+            <button
+              onClick={handleManualSwap}
+              className="flex items-center justify-center gap-2 bg-purple-900 text-purple-200 py-3 rounded-lg hover:bg-purple-800"
+            >
+              <RotateCcw size={16} />
+              <span className="text-sm">{isSwapped ? '🔄 已換場 - 點擊換回' : '手動交換場地'}</span>
+            </button>
+          )}
         </div>
 
         {/* 球場顯示 */}
