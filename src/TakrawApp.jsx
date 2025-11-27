@@ -687,7 +687,7 @@ const TakrawApp = () => {
             team={bottomTeam}
             isTop={false}
             isServingTeam={isBottomServing}
-            isSwapped={isSwapped
+            isSwapped={isSwapped}
             gameMode={gameMode}
           />
         </div>
