@@ -1,7 +1,11 @@
 import React from 'react';
 
-const PlayerNode = ({ number, position, teamColor, isServing }) => {
-  const posLabel = ["後中", "左前", "右前"];
+const PlayerNode = ({ number, position, teamColor, isServing, gameMode }) => {
+  // 團體模式：後中、左前、右前
+  // 雙打模式：左、右
+  const posLabel = gameMode === 'doubles' 
+    ? ["左", "右"]
+    : ["後中", "左前", "右前"];
   
   return (
     <div className={`${teamColor} bg-opacity-90 rounded-lg p-4 flex flex-col items-center justify-center min-w-[90px] shadow-lg relative`}>
