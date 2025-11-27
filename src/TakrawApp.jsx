@@ -438,6 +438,7 @@ const TakrawApp = () => {
 
   return (
     <div className="h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 text-white flex flex-col">
+      {/* 頂部資訊列（含復原按鈕） */}
       <div className="bg-gray-900 bg-opacity-80 p-3 flex justify-between items-center">
         <div className="text-center flex-1">
           <div className="text-sm text-gray-400">Set {currentSet}</div>
@@ -467,6 +468,7 @@ const TakrawApp = () => {
       )}
 
       <div className="flex-1 p-4 flex flex-col gap-4 overflow-y-auto">
+        {/* 分數板 */}
         <div className="grid grid-cols-2 gap-4">
           <button
             onClick={() => handleScore('A')}
@@ -491,6 +493,7 @@ const TakrawApp = () => {
           </button>
         </div>
 
+        {/* 功能按鈕 */}
         <div className="grid grid-cols-3 gap-2">
           <button
             onClick={() => {
@@ -523,6 +526,7 @@ const TakrawApp = () => {
           </button>
         </div>
 
+        {/* 球場顯示 */}
         <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
           <HalfCourt
             team={topTeam}
@@ -542,13 +546,16 @@ const TakrawApp = () => {
             isSwapped={isSwapped}
           />
         </div>
+      </div>
 
+      {/* 提示訊息 */}
       {swapMessage && (
         <div className="fixed top-20 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full font-bold shadow-2xl z-50 animate-bounce">
           {swapMessage}
         </div>
       )}
 
+      {/* 比賽結束畫面 */}
       {matchOver && (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="bg-gradient-to-br from-yellow-400 to-orange-500 rounded-3xl p-10 text-center max-w-md">
@@ -570,6 +577,7 @@ const TakrawApp = () => {
         </div>
       )}
 
+      {/* 替補選單 */}
       <SubstitutionModal
         showSubModal={showSubModal}
         setShowSubModal={setShowSubModal}
