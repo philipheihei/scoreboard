@@ -61,9 +61,16 @@ const TakrawApp = () => {
     setGameHistory(prev => prev.slice(0, -1));
   };
 
-  const rotatePlayers = (players) => {
+  // 逆時針輪轉（自己/底部隊伍）
+  const rotatePlayersCounterClockwise = (players) => {
     const [back, left, right] = players;
     return [right, back, left];
+  };
+
+  // 順時針輪轉（對手/頂部隊伍）
+  const rotatePlayersClockwise = (players) => {
+    const [back, left, right] = players;
+    return [left, right, back];
   };
 
   const showSwapAlert = (message) => {
@@ -182,9 +189,15 @@ const TakrawApp = () => {
       // 團體模式：失去發球權時，獲得發球權的隊伍輪轉
       if (gameMode === 'team' && nextServingTeam !== servingTeam) {
         if (nextServingTeam === 'A') {
-          updatedTeamA_Players = rotatePlayers(teamA.players);
+          // A隊在底部時逆時針，在頂部時順時針
+          updatedTeamA_Players = isSwapped 
+            ? rotateClockwise(teamA.players)
+            : rotateCounterClockwise(teamA.players);
         } else {
-          updatedTeamB_Players = rotatePlayers(teamB.players);
+          // B隊在頂部時順時針，在底部時逆時針
+          updatedTeamB_Players = isSwapped
+            ? rotateCounterClockwise(teamB.players)
+            : rotateClockwise(teamB.players);
         }
       }
     
