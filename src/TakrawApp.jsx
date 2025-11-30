@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { RotateCcw, ArrowRightLeft, Undo2 } from 'lucide-react';
+import { RotateCcw, ArrowRightLeft, Undo2, Repeat } from 'lucide-react';
 import PlayerNode from './components/PlayerNode';
 import HalfCourt from './components/HalfCourt';
 import SubstitutionModal from './components/SubstitutionModal';
@@ -295,6 +295,18 @@ const TakrawApp = () => {
     saveState();
     setIsSwapped(prev => !prev);
     showSwapAlert("🔄 已手動交換場地！");
+  };
+
+  // 手動交換對手發球順序（只用於雙打模式）
+  const swapOpponentOrder = () => {
+    const opponentTeam = isSwapped ? teamA : teamB;
+    const swappedPlayers = [opponentTeam.players[1], opponentTeam.players[0]];
+    
+    if (isSwapped) {
+      setTeamA({ ...teamA, players: swappedPlayers });
+    } else {
+      setTeamB({ ...teamB, players: swappedPlayers });
+    }
   };
 
   // --- 開始畫面 ---
@@ -659,7 +671,7 @@ const TakrawApp = () => {
         </div>
 
         {/* 功能按鈕 */}
-        <div className={gameMode === 'doubles' ? 'grid grid-cols-1 gap-2' : 'grid grid-cols-3 gap-2'}>
+        <div className={gameMode === 'doubles' ? 'grid grid-cols-2 gap-2' : 'grid grid-cols-3 gap-2'}>
           {gameMode === 'team' && (
             <>
               <button
@@ -695,15 +707,24 @@ const TakrawApp = () => {
           )}
           
           {gameMode === 'doubles' && (
-            <button
-              onClick={handleManualSwap}
-              className="flex items-center justify-center gap-2 bg-purple-900 text-purple-200 py-3 rounded-lg hover:bg-purple-800"
-            >
-              <RotateCcw size={16} />
-              <span className="text-sm">{isSwapped ? '🔄 已換場 - 點擊換回' : '手動交換場地'}</span>
-            </button>
+            <>
+              <button
+                onClick={handleManualSwap}
+                className="flex items-center justify-center gap-2 bg-purple-900 text-purple-200 py-3 rounded-lg hover:bg-purple-800"
+              >
+                <RotateCcw size={16} />
+                <span className="text-sm">{isSwapped ? '🔄 已換場 - 點擊換回' : '手動交換場地'}</span>
+              </button>
+              
+              <button
+                onClick={swapOpponentOrder}
+                className="flex items-center justify-center gap-2 bg-red-600 text-white py-3 rounded-lg hover:bg-red-700"
+              >
+                <Repeat size={16} />
+                <span className="text-sm">對調對手開球順序</span>
+              </button>
+            </>
           )}
-        </div>
 
         {/* 球場顯示 */}
         <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
