@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { ArrowRightLeft, Undo2, Repeat } from 'lucide-react';
 import PlayerNode from './components/PlayerNode';
@@ -46,6 +45,8 @@ const TakrawApp = () => {
     setGameHistory(prev => [...prev.slice(-20), currentState]);
   };
 
+  const [isSwapped, setIsSwapped] = useState(false);
+  
   const undo = () => {
     if (gameHistory.length === 0) return;
     const lastState = gameHistory[gameHistory.length - 1];
