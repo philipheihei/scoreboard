@@ -229,7 +229,6 @@ const TakrawApp = () => {
         setServingTeam(nextServingTeam);
         setServingPlayerIndexA(newServingPlayerIndexA);
         setServingPlayerIndexB(newServingPlayerIndexB);
-        }
       }
     };
 
